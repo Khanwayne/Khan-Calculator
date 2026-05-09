@@ -388,7 +388,7 @@ function HelperView({ onSubmit, lastSubmission }: { onSubmit: (d: Submission) =>
 // ── ADMIN VIEW ───────────────────────────────────────────────────────────────
 
 type WeekRecord = { week: number; income: number; memberships: number; date: string };
-type DayEntry   = { id: number; date: string; sessionTotal: number; memberships: number; membershipIncome: number; total: number };
+type DayEntry   = { id: number; date: string; sessionTotal: number; memberships: number; membershipIncome: number; total: number; note: string };
 
 function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pendingSubmission: Submission | null; onClearPending: () => void; onChangePin: () => void }) {
   const [tab, setTab]                     = useState("studio");
@@ -396,6 +396,7 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
   const [sessionTotal, setSessionTotal]   = useState(0);
   const [memberships, setMemberships]     = useState(0);
   const [membershipPay, setMembershipPay] = useState("monthly");
+  const [stagingNote, setStagingNote]     = useState("");
   const [dayEntries, setDayEntries]       = useState<DayEntry[]>(getStoredDays);
   const [windfall, setWindfall]           = useState(112000);
   const [weekHistory, setWeekHistory]     = useState<WeekRecord[]>(getStoredHistory);
@@ -417,6 +418,7 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
   const resetStaging = () => {
     setStagingKey(k => k + 1);
     setMemberships(0);
+    setStagingNote("");
   };
 
   const addDay = () => {
@@ -428,6 +430,7 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
       memberships,
       membershipIncome: stagingMembershipIncome,
       total: stagingTotal,
+      note: stagingNote.trim(),
     };
     setDayEntries(prev => [...prev, entry]);
     resetStaging();
@@ -507,6 +510,20 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
             <SessionInput key={stagingKey} sessionTotal={sessionTotal} onTotalChange={setSessionTotal} />
             <MembershipBlock memberships={memberships} setMemberships={setMemberships} membershipPay={membershipPay} setMembershipPay={setMembershipPay} />
 
+            {/* Day note */}
+            <textarea
+              value={stagingNote}
+              onChange={e => setStagingNote(e.target.value)}
+              placeholder="Notes for today — clients, vibe, anything worth remembering..."
+              rows={2}
+              style={{
+                width: "100%", boxSizing: "border-box", resize: "none",
+                background: "#111", border: "1px solid #1E1E1E", borderRadius: 6,
+                padding: "10px 12px", color: "#AAA", fontFamily: mono, fontSize: 11,
+                lineHeight: 1.5, marginBottom: 10, outline: "none",
+              }}
+            />
+
             {/* Staging preview + Add button */}
             {stagingTotal > 0 && (
               <div style={{ background: "#161616", border: "1px dashed #333", borderRadius: 6, padding: "12px 16px", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -556,6 +573,7 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
                         Sessions {fmt(e.sessionTotal)}
                         {e.memberships > 0 ? ` · ${e.memberships} membership${e.memberships > 1 ? "s" : ""} ${fmt(e.membershipIncome)}` : ""}
                       </div>
+                      {e.note ? <div style={{ fontSize: 9, color: "#555", marginTop: 4, fontStyle: "italic" }}>"{e.note}"</div> : null}
                     </div>
                     <div style={{ fontSize: 17, fontWeight: 700, color: "#C9A84C" }}>{fmt(e.total)}</div>
                     <button onClick={() => removeDay(e.id)} style={{

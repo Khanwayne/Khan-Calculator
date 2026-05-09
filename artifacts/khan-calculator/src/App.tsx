@@ -388,12 +388,15 @@ function HelperView({ onSubmit, lastSubmission }: { onSubmit: (d: Submission) =>
 // ── ADMIN VIEW ───────────────────────────────────────────────────────────────
 
 type WeekRecord = { week: number; income: number; memberships: number; date: string };
+type DayEntry   = { id: number; date: string; sessionTotal: number; memberships: number; membershipIncome: number; total: number };
 
 function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pendingSubmission: Submission | null; onClearPending: () => void; onChangePin: () => void }) {
   const [tab, setTab]                     = useState("studio");
+  const [stagingKey, setStagingKey]       = useState(0);
   const [sessionTotal, setSessionTotal]   = useState(0);
   const [memberships, setMemberships]     = useState(0);
   const [membershipPay, setMembershipPay] = useState("monthly");
+  const [dayEntries, setDayEntries]       = useState<DayEntry[]>([]);
   const [windfall, setWindfall]           = useState(112000);
   const [weekHistory, setWeekHistory]     = useState<WeekRecord[]>([]);
   const [weekNum, setWeekNum]             = useState(1);
@@ -402,18 +405,43 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
   const [editingGoal, setEditingGoal]     = useState(false);
   const [goalInput, setGoalInput]         = useState("");
 
-  const membershipIncome = memberships * 300;
-  const studioIncome     = sessionTotal + membershipIncome;
+  const stagingMembershipIncome = memberships * 300;
+  const stagingTotal            = sessionTotal + stagingMembershipIncome;
+  const weekRunningTotal        = dayEntries.reduce((s, e) => s + e.total, 0);
+  const studioIncome            = weekRunningTotal; // used for splits & log
+
+  const resetStaging = () => {
+    setStagingKey(k => k + 1);
+    setMemberships(0);
+  };
+
+  const addDay = () => {
+    if (stagingTotal === 0) return;
+    const entry: DayEntry = {
+      id: ++uid,
+      date: new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+      sessionTotal,
+      memberships,
+      membershipIncome: stagingMembershipIncome,
+      total: stagingTotal,
+    };
+    setDayEntries(prev => [...prev, entry]);
+    resetStaging();
+  };
+
+  const removeDay = (id: number) => setDayEntries(prev => prev.filter(e => e.id !== id));
 
   const logWeek = (override?: number) => {
-    const income = override ?? studioIncome;
-    setWeekHistory(h => [{ week: weekNum, income, memberships, date: new Date().toLocaleDateString() }, ...h].slice(0, 24));
+    const income = override ?? weekRunningTotal;
+    const totalMemberships = dayEntries.reduce((s, e) => s + e.memberships, 0);
+    setWeekHistory(h => [{ week: weekNum, income, memberships: totalMemberships, date: new Date().toLocaleDateString() }, ...h].slice(0, 24));
     setWeekNum(n => n + 1);
+    setDayEntries([]);
+    resetStaging();
   };
 
   const acceptPending = () => {
     if (!pendingSubmission) return;
-    setMemberships(pendingSubmission.memberships);
     logWeek(pendingSubmission.totalIncome);
     onClearPending();
     setShowBanner(false);
@@ -469,36 +497,89 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
 
       {tab === "studio" && (
         <div>
+          {/* ── ADD TODAY'S SESSIONS ── */}
           <div style={{ padding: "20px 20px 0" }}>
-            <SessionInput sessionTotal={sessionTotal} onTotalChange={setSessionTotal} />
+            <div style={{ fontSize: 10, color: "#5BC4A0", letterSpacing: 2, marginBottom: 12, fontWeight: 700 }}>ADD TODAY'S SESSIONS</div>
+            <SessionInput key={stagingKey} sessionTotal={sessionTotal} onTotalChange={setSessionTotal} />
             <MembershipBlock memberships={memberships} setMemberships={setMemberships} membershipPay={membershipPay} setMembershipPay={setMembershipPay} />
-            <TotalBox sessionTotal={sessionTotal} membershipIncome={membershipIncome} goal={weeklyGoal} />
+
+            {/* Staging preview + Add button */}
+            {stagingTotal > 0 && (
+              <div style={{ background: "#161616", border: "1px dashed #333", borderRadius: 6, padding: "12px 16px", marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: 9, color: "#555", letterSpacing: 1 }}>TODAY'S TOTAL</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#DDD", marginTop: 2 }}>{fmt(stagingTotal)}</div>
+                </div>
+                <button onClick={addDay} style={{
+                  padding: "12px 20px", background: "#5BC4A0", border: "none", borderRadius: 6,
+                  color: "#0A0A0A", fontFamily: mono, fontWeight: 700, fontSize: 12,
+                  letterSpacing: 1, cursor: "pointer",
+                }}>ADD TO WEEK →</button>
+              </div>
+            )}
+            {stagingTotal === 0 && (
+              <div style={{ fontSize: 10, color: "#2A2A2A", textAlign: "center", marginBottom: 14, letterSpacing: 1 }}>
+                Enter sessions above, then add to your week
+              </div>
+            )}
+          </div>
+
+          {/* ── WEEK SO FAR ── */}
+          <div style={{ padding: "0 20px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <div style={{ fontSize: 10, color: "#C9A84C", letterSpacing: 2, fontWeight: 700 }}>
+                THIS WEEK · {dayEntries.length} DAY{dayEntries.length !== 1 ? "S" : ""}
+              </div>
+            </div>
+
+            {dayEntries.length === 0 ? (
+              <div style={{ background: "#111", border: "1px solid #1A1A1A", borderRadius: 6, padding: "22px 16px", textAlign: "center", color: "#2A2A2A", fontSize: 11, marginBottom: 12 }}>
+                No days added yet this week
+              </div>
+            ) : (
+              <div style={{ marginBottom: 10 }}>
+                {dayEntries.map((e, i) => (
+                  <div key={e.id} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "10px 14px",
+                    background: i % 2 === 0 ? "#111" : "#0F0F0F",
+                    borderTop: i === 0 ? "1px solid #1E1E1E" : "none",
+                    borderBottom: "1px solid #1A1A1A",
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#DDD" }}>{e.date}</div>
+                      <div style={{ fontSize: 9, color: "#444", marginTop: 2 }}>
+                        Sessions {fmt(e.sessionTotal)}
+                        {e.memberships > 0 ? ` · ${e.memberships} membership${e.memberships > 1 ? "s" : ""} ${fmt(e.membershipIncome)}` : ""}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: "#C9A84C" }}>{fmt(e.total)}</div>
+                    <button onClick={() => removeDay(e.id)} style={{
+                      width: 22, height: 22, background: "#1E1E1E", border: "1px solid #2A2A2A",
+                      color: "#555", fontSize: 14, cursor: "pointer", borderRadius: 3, padding: 0, lineHeight: 1,
+                    }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Running total + goal bar */}
+            <TotalBox sessionTotal={weekRunningTotal} membershipIncome={0} goal={weeklyGoal} />
 
             {/* Goal editor */}
             <div style={{ marginTop: -12, marginBottom: 20 }}>
               {editingGoal ? (
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <input
-                    type="number"
-                    autoFocus
-                    value={goalInput}
-                    onChange={e => setGoalInput(e.target.value)}
+                  <input type="number" autoFocus value={goalInput} onChange={e => setGoalInput(e.target.value)}
                     onKeyDown={e => {
-                      if (e.key === "Enter") {
-                        const g = Number(goalInput);
-                        if (g > 0) { setWeeklyGoal(g); setStoredGoal(g); }
-                        setEditingGoal(false);
-                      }
+                      if (e.key === "Enter") { const g = Number(goalInput); if (g > 0) { setWeeklyGoal(g); setStoredGoal(g); } setEditingGoal(false); }
                       if (e.key === "Escape") setEditingGoal(false);
                     }}
                     placeholder="Weekly goal $"
                     style={{ flex: 1, background: "#161616", border: "1px solid #333", borderRadius: 4, padding: "7px 10px", color: "#FFF", fontFamily: mono, fontSize: 13, fontWeight: 700, boxSizing: "border-box" }}
                   />
-                  <button onClick={() => {
-                    const g = Number(goalInput);
-                    if (g > 0) { setWeeklyGoal(g); setStoredGoal(g); }
-                    setEditingGoal(false);
-                  }} style={{ padding: "7px 14px", background: "#C9A84C", border: "none", borderRadius: 4, color: "#0A0A0A", fontFamily: mono, fontWeight: 700, fontSize: 11, cursor: "pointer" }}>SET</button>
+                  <button onClick={() => { const g = Number(goalInput); if (g > 0) { setWeeklyGoal(g); setStoredGoal(g); } setEditingGoal(false); }}
+                    style={{ padding: "7px 14px", background: "#C9A84C", border: "none", borderRadius: 4, color: "#0A0A0A", fontFamily: mono, fontWeight: 700, fontSize: 11, cursor: "pointer" }}>SET</button>
                   <button onClick={() => setEditingGoal(false)} style={{ padding: "7px 10px", background: "#1E1E1E", border: "1px solid #333", borderRadius: 4, color: "#555", fontFamily: mono, fontSize: 11, cursor: "pointer" }}>✕</button>
                 </div>
               ) : (
@@ -510,27 +591,29 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
             </div>
           </div>
 
-          <div style={{ borderTop: "1px solid #1E1E1E" }}>
-            <div style={{ padding: "14px 20px 8px", fontSize: 10, color: "#C9A84C", letterSpacing: 2, fontWeight: 700 }}>YOUR SPLIT</div>
-            {ACCOUNTS.map(a => <SplitRow key={a.key} acct={a} amount={studioIncome} />)}
-          </div>
-
-          <div style={{ padding: 20 }}>
-            <div style={{ background: "#0D1F0D", border: "1px solid #2A5A2A", borderLeft: "4px solid #5BC4A0", borderRadius: 6, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#5BC4A0" }}>🎉 THIS WEEKEND</div>
-                <div style={{ fontSize: 10, color: "#3A7A5A", marginTop: 2 }}>Your family memory budget</div>
+          {/* ── SPLITS + LOG (only once at least one day is in) ── */}
+          {weekRunningTotal > 0 && (
+            <>
+              <div style={{ borderTop: "1px solid #1E1E1E" }}>
+                <div style={{ padding: "14px 20px 8px", fontSize: 10, color: "#C9A84C", letterSpacing: 2, fontWeight: 700 }}>YOUR SPLIT SO FAR</div>
+                {ACCOUNTS.map(a => <SplitRow key={a.key} acct={a} amount={studioIncome} />)}
               </div>
-              <div style={{ fontSize: 32, fontWeight: 700, color: "#5BC4A0" }}>{fmt(studioIncome * 0.083)}</div>
-            </div>
-            <button onClick={() => logWeek()} disabled={studioIncome === 0} style={{
-              width: "100%", padding: "14px 0", border: "none",
-              background: studioIncome === 0 ? "#1A1A1A" : "#C9A84C",
-              color: studioIncome === 0 ? "#333" : "#0A0A0A",
-              fontFamily: mono, fontWeight: 700, fontSize: 13, letterSpacing: 1,
-              cursor: studioIncome === 0 ? "not-allowed" : "pointer", borderRadius: 6,
-            }}>LOG THIS WEEK →</button>
-          </div>
+              <div style={{ padding: 20 }}>
+                <div style={{ background: "#0D1F0D", border: "1px solid #2A5A2A", borderLeft: "4px solid #5BC4A0", borderRadius: 6, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#5BC4A0" }}>🎉 THIS WEEKEND</div>
+                    <div style={{ fontSize: 10, color: "#3A7A5A", marginTop: 2 }}>Your family memory budget</div>
+                  </div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: "#5BC4A0" }}>{fmt(studioIncome * 0.083)}</div>
+                </div>
+                <button onClick={() => logWeek()} style={{
+                  width: "100%", padding: "14px 0", border: "none", background: "#C9A84C",
+                  color: "#0A0A0A", fontFamily: mono, fontWeight: 700, fontSize: 13,
+                  letterSpacing: 1, cursor: "pointer", borderRadius: 6,
+                }}>LOG THIS WEEK →</button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

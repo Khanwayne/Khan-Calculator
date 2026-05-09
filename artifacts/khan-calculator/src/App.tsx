@@ -579,6 +579,69 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
 
       {tab === "tracker" && (
         <div style={{ padding: 20 }}>
+
+          {/* ── ALL-TIME SUMMARY ── */}
+          {weekHistory.length > 0 && (() => {
+            const total     = weekHistory.reduce((s, w) => s + w.income, 0);
+            const avg       = total / weekHistory.length;
+            const best      = Math.max(...weekHistory.map(w => w.income));
+            const bestWeek  = weekHistory.find(w => w.income === best);
+            const goalsHit  = weekHistory.filter(w => w.income >= weeklyGoal).length;
+            const hitRate   = Math.round((goalsHit / weekHistory.length) * 100);
+
+            // current streak: consecutive most-recent weeks at or above goal
+            let streak = 0;
+            for (const w of weekHistory) {
+              if (w.income >= weeklyGoal) streak++;
+              else break;
+            }
+
+            return (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 10, color: "#C9A84C", letterSpacing: 2, marginBottom: 12, fontWeight: 700 }}>ALL-TIME SUMMARY</div>
+
+                {/* Top row: total + best */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                  <div style={{ background: "#161616", border: "1px solid #2A2A1A", borderRadius: 6, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: 1, marginBottom: 6 }}>TOTAL EARNED</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: "#C9A84C" }}>{fmt(total)}</div>
+                    <div style={{ fontSize: 9, color: "#444", marginTop: 3 }}>{weekHistory.length} week{weekHistory.length !== 1 ? "s" : ""} logged</div>
+                  </div>
+                  <div style={{ background: "#161616", border: "1px solid #2A2A1A", borderRadius: 6, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: 1, marginBottom: 6 }}>BEST WEEK</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: "#C9A84C" }}>{fmt(best)}</div>
+                    <div style={{ fontSize: 9, color: "#444", marginTop: 3 }}>Week #{bestWeek?.week} · {bestWeek?.date}</div>
+                  </div>
+                </div>
+
+                {/* Bottom row: avg + hit rate */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                  <div style={{ background: "#161616", border: "1px solid #1E1E1E", borderRadius: 6, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: 1, marginBottom: 6 }}>AVG / WEEK</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: avg >= weeklyGoal ? "#5BC4A0" : "#DDD" }}>{fmt(avg)}</div>
+                    <div style={{ fontSize: 9, color: "#444", marginTop: 3 }}>{avg >= weeklyGoal ? "above goal" : fmt(weeklyGoal - avg) + " below goal"}</div>
+                  </div>
+                  <div style={{ background: "#161616", border: "1px solid #1E1E1E", borderRadius: 6, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: 1, marginBottom: 6 }}>GOAL HIT RATE</div>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: hitRate >= 80 ? "#5BC4A0" : hitRate >= 50 ? "#C9A84C" : "#E87070" }}>{hitRate}%</div>
+                    <div style={{ fontSize: 9, color: "#444", marginTop: 3 }}>{goalsHit} of {weekHistory.length} weeks</div>
+                  </div>
+                </div>
+
+                {/* Streak bar */}
+                {streak > 0 && (
+                  <div style={{ background: "#0D1F0D", border: "1px solid #2A5A2A", borderLeft: "4px solid #5BC4A0", borderRadius: 6, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "#5BC4A0" }}>🔥 GOAL STREAK</div>
+                      <div style={{ fontSize: 9, color: "#3A7A5A", marginTop: 2 }}>Consecutive weeks at or above {fmt(weeklyGoal)}</div>
+                    </div>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: "#5BC4A0" }}>{streak}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           <div style={{ fontSize: 10, color: "#C9A84C", letterSpacing: 2, marginBottom: 16, fontWeight: 700 }}>COMPOUNDING ACCOUNTS</div>
           {[
             { label: "🧒 Son's Savings",  key: "son",       color: "#6BA3E8", target: 6000 },

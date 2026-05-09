@@ -281,22 +281,41 @@ function MembershipBlock({ memberships, setMemberships, membershipPay, setMember
 
 // ── INCOME TOTAL BOX ─────────────────────────────────────────────────────────
 
-function TotalBox({ sessionTotal, membershipIncome }: { sessionTotal: number; membershipIncome: number }) {
-  const total = sessionTotal + membershipIncome;
+function TotalBox({ sessionTotal, membershipIncome, goal }: { sessionTotal: number; membershipIncome: number; goal?: number }) {
+  const total   = sessionTotal + membershipIncome;
+  const target  = goal ?? 1500;
+  const pct     = Math.min(100, (total / target) * 100);
+  const hit     = total >= target;
+  const barColor = hit ? "#5BC4A0" : "#C9A84C";
+  const remaining = target - total;
+
   return (
-    <div style={{ background: "#161616", border: "1px solid #C9A84C", borderRadius: 6, padding: "16px 20px", marginBottom: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: membershipIncome > 0 ? 6 : 0 }}>
+    <div style={{ background: "#161616", border: `1px solid ${hit ? "#2A5A3A" : "#C9A84C"}`, borderRadius: 6, padding: "16px 20px", marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
         <div>
-          <div style={{ fontSize: 10, color: "#C9A84C", letterSpacing: 2, fontWeight: 700 }}>TOTAL THIS WEEK</div>
+          <div style={{ fontSize: 10, color: hit ? "#5BC4A0" : "#C9A84C", letterSpacing: 2, fontWeight: 700 }}>TOTAL THIS WEEK</div>
+          {membershipIncome > 0 && (
+            <div style={{ display: "flex", gap: 10, fontSize: 9, color: "#555", marginTop: 2 }}>
+              <span>Sessions {fmt(sessionTotal)}</span>
+              <span>·</span>
+              <span>Members {fmt(membershipIncome)}</span>
+            </div>
+          )}
         </div>
-        <div style={{ fontSize: 36, fontWeight: 700, color: "#C9A84C" }}>{fmt(total)}</div>
+        <div style={{ fontSize: 36, fontWeight: 700, color: hit ? "#5BC4A0" : "#C9A84C" }}>{fmt(total)}</div>
       </div>
-      {membershipIncome > 0 && (
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#555" }}>
-          <span>Sessions: {fmt(sessionTotal)}</span>
-          <span>Memberships: {fmt(membershipIncome)}</span>
-        </div>
-      )}
+
+      {/* Progress bar */}
+      <div style={{ background: "#0A0A0A", borderRadius: 3, height: 6, overflow: "hidden", marginBottom: 6 }}>
+        <div style={{ height: "100%", width: pct + "%", background: barColor, borderRadius: 3, transition: "width 0.4s ease" }} />
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "#444" }}>
+        <span style={{ color: hit ? "#5BC4A0" : "#555" }}>
+          {hit ? "🎉 GOAL HIT" : `${fmt(remaining)} to goal`}
+        </span>
+        <span>{Math.round(pct)}% of {fmt(target)}</span>
+      </div>
     </div>
   );
 }
@@ -350,7 +369,7 @@ function HelperView({ onSubmit, lastSubmission }: { onSubmit: (d: Submission) =>
         <input placeholder="Add a note (optional)..." value={note} onChange={e => setNote(e.target.value)}
           style={{ width: "100%", background: "#161616", border: "1px solid #222", borderRadius: 6, padding: "10px 14px", color: "#888", fontFamily: mono, fontSize: 12, boxSizing: "border-box", marginBottom: 16 }} />
 
-        <TotalBox sessionTotal={sessionTotal} membershipIncome={membershipIncome} />
+        <TotalBox sessionTotal={sessionTotal} membershipIncome={membershipIncome} goal={getStoredGoal()} />
 
         <button onClick={handleSubmit} disabled={totalIncome === 0} style={{
           width: "100%", padding: "16px 0", border: "none",
@@ -379,6 +398,9 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
   const [weekHistory, setWeekHistory]     = useState<WeekRecord[]>([]);
   const [weekNum, setWeekNum]             = useState(1);
   const [showBanner, setShowBanner]       = useState(true);
+  const [weeklyGoal, setWeeklyGoal]       = useState(getStoredGoal);
+  const [editingGoal, setEditingGoal]     = useState(false);
+  const [goalInput, setGoalInput]         = useState("");
 
   const membershipIncome = memberships * 300;
   const studioIncome     = sessionTotal + membershipIncome;
@@ -450,7 +472,42 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
           <div style={{ padding: "20px 20px 0" }}>
             <SessionInput sessionTotal={sessionTotal} onTotalChange={setSessionTotal} />
             <MembershipBlock memberships={memberships} setMemberships={setMemberships} membershipPay={membershipPay} setMembershipPay={setMembershipPay} />
-            <TotalBox sessionTotal={sessionTotal} membershipIncome={membershipIncome} />
+            <TotalBox sessionTotal={sessionTotal} membershipIncome={membershipIncome} goal={weeklyGoal} />
+
+            {/* Goal editor */}
+            <div style={{ marginTop: -12, marginBottom: 20 }}>
+              {editingGoal ? (
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input
+                    type="number"
+                    autoFocus
+                    value={goalInput}
+                    onChange={e => setGoalInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") {
+                        const g = Number(goalInput);
+                        if (g > 0) { setWeeklyGoal(g); setStoredGoal(g); }
+                        setEditingGoal(false);
+                      }
+                      if (e.key === "Escape") setEditingGoal(false);
+                    }}
+                    placeholder="Weekly goal $"
+                    style={{ flex: 1, background: "#161616", border: "1px solid #333", borderRadius: 4, padding: "7px 10px", color: "#FFF", fontFamily: mono, fontSize: 13, fontWeight: 700, boxSizing: "border-box" }}
+                  />
+                  <button onClick={() => {
+                    const g = Number(goalInput);
+                    if (g > 0) { setWeeklyGoal(g); setStoredGoal(g); }
+                    setEditingGoal(false);
+                  }} style={{ padding: "7px 14px", background: "#C9A84C", border: "none", borderRadius: 4, color: "#0A0A0A", fontFamily: mono, fontWeight: 700, fontSize: 11, cursor: "pointer" }}>SET</button>
+                  <button onClick={() => setEditingGoal(false)} style={{ padding: "7px 10px", background: "#1E1E1E", border: "1px solid #333", borderRadius: 4, color: "#555", fontFamily: mono, fontSize: 11, cursor: "pointer" }}>✕</button>
+                </div>
+              ) : (
+                <button onClick={() => { setGoalInput(String(weeklyGoal)); setEditingGoal(true); }} style={{
+                  background: "none", border: "none", fontFamily: mono, fontSize: 9,
+                  color: "#333", cursor: "pointer", letterSpacing: 1, padding: 0,
+                }}>✎ EDIT GOAL ({fmt(weeklyGoal)}/wk)</button>
+              )}
+            </div>
           </div>
 
           <div style={{ borderTop: "1px solid #1E1E1E" }}>
@@ -577,9 +634,12 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
 
 // ── PIN SCREEN ────────────────────────────────────────────────────────────────
 
-const PIN_KEY = "khan_admin_pin";
-const getStoredPin = () => localStorage.getItem(PIN_KEY) ?? "1234";
-const setStoredPin = (p: string) => localStorage.setItem(PIN_KEY, p);
+const PIN_KEY  = "khan_admin_pin";
+const GOAL_KEY = "khan_weekly_goal";
+const getStoredPin  = () => localStorage.getItem(PIN_KEY) ?? "1234";
+const setStoredPin  = (p: string) => localStorage.setItem(PIN_KEY, p);
+const getStoredGoal = () => Number(localStorage.getItem(GOAL_KEY) || 1500);
+const setStoredGoal = (g: number) => localStorage.setItem(GOAL_KEY, String(g));
 
 type PinScreenProps = {
   title: string;

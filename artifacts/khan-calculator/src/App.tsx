@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const ACCOUNTS = [
   { key: "bills",     label: "Bills",         emoji: "🏠", pct: 0.40,  type: "resets",    color: "#C9A84C" },
@@ -396,10 +396,10 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
   const [sessionTotal, setSessionTotal]   = useState(0);
   const [memberships, setMemberships]     = useState(0);
   const [membershipPay, setMembershipPay] = useState("monthly");
-  const [dayEntries, setDayEntries]       = useState<DayEntry[]>([]);
+  const [dayEntries, setDayEntries]       = useState<DayEntry[]>(getStoredDays);
   const [windfall, setWindfall]           = useState(112000);
-  const [weekHistory, setWeekHistory]     = useState<WeekRecord[]>([]);
-  const [weekNum, setWeekNum]             = useState(1);
+  const [weekHistory, setWeekHistory]     = useState<WeekRecord[]>(getStoredHistory);
+  const [weekNum, setWeekNum]             = useState(getStoredWeekNum);
   const [showBanner, setShowBanner]       = useState(true);
   const [weeklyGoal, setWeeklyGoal]       = useState(getStoredGoal);
   const [editingGoal, setEditingGoal]     = useState(false);
@@ -409,6 +409,10 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
   const stagingTotal            = sessionTotal + stagingMembershipIncome;
   const weekRunningTotal        = dayEntries.reduce((s, e) => s + e.total, 0);
   const studioIncome            = weekRunningTotal; // used for splits & log
+
+  useEffect(() => { localStorage.setItem(DAYENTRY_KEY, JSON.stringify(dayEntries)); }, [dayEntries]);
+  useEffect(() => { localStorage.setItem(HISTORY_KEY,  JSON.stringify(weekHistory)); }, [weekHistory]);
+  useEffect(() => { localStorage.setItem(WEEKNUM_KEY,  String(weekNum)); }, [weekNum]);
 
   const resetStaging = () => {
     setStagingKey(k => k + 1);
@@ -787,12 +791,19 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
 
 // ── PIN SCREEN ────────────────────────────────────────────────────────────────
 
-const PIN_KEY  = "khan_admin_pin";
-const GOAL_KEY = "khan_weekly_goal";
-const getStoredPin  = () => localStorage.getItem(PIN_KEY) ?? "1234";
-const setStoredPin  = (p: string) => localStorage.setItem(PIN_KEY, p);
-const getStoredGoal = () => Number(localStorage.getItem(GOAL_KEY) || 1500);
-const setStoredGoal = (g: number) => localStorage.setItem(GOAL_KEY, String(g));
+const PIN_KEY      = "khan_admin_pin";
+const GOAL_KEY     = "khan_weekly_goal";
+const HISTORY_KEY  = "khan_week_history";
+const WEEKNUM_KEY  = "khan_week_num";
+const DAYENTRY_KEY = "khan_day_entries";
+
+const getStoredPin     = () => localStorage.getItem(PIN_KEY) ?? "1234";
+const setStoredPin     = (p: string) => localStorage.setItem(PIN_KEY, p);
+const getStoredGoal    = () => Number(localStorage.getItem(GOAL_KEY) || 1500);
+const setStoredGoal    = (g: number) => localStorage.setItem(GOAL_KEY, String(g));
+const getStoredHistory = (): WeekRecord[] => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch { return []; } };
+const getStoredWeekNum = () => Number(localStorage.getItem(WEEKNUM_KEY) || 1);
+const getStoredDays    = (): DayEntry[] => { try { return JSON.parse(localStorage.getItem(DAYENTRY_KEY) || "[]"); } catch { return []; } };
 
 type PinScreenProps = {
   title: string;

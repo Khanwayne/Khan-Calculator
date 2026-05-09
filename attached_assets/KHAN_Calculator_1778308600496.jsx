@@ -29,13 +29,13 @@ const RATE_PRESETS = [
 ];
 
 const mono = "'SF Mono','Fira Code','Cascadia Code',monospace";
-const fmt  = (n: number) => "$" + Math.round(n).toLocaleString();
+const fmt  = (n) => "$" + Math.round(n).toLocaleString();
 let   uid  = 0;
 
 // ── SHARED COMPONENTS ────────────────────────────────────────────────────────
 
-function Badge({ type }: { type: string }) {
-  const map: Record<string, { label: string; bg: string; color: string }> = {
+function Badge({ type }) {
+  const map = {
     resets:    { label: "RESETS",    bg: "#2A2A1A", color: "#C9A84C" },
     compounds: { label: "COMPOUNDS", bg: "#1A2230", color: "#6BA3E8" },
     flex:      { label: "FLEX",      bg: "#1E1E1E", color: "#888888" },
@@ -44,7 +44,7 @@ function Badge({ type }: { type: string }) {
   return <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, padding: "2px 7px", borderRadius: 3, background: s.bg, color: s.color }}>{s.label}</span>;
 }
 
-function SplitRow({ acct, amount }: { acct: typeof ACCOUNTS[0]; amount: number }) {
+function SplitRow({ acct, amount }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderBottom: "1px solid #1E1E1E", background: "#111" }}>
       <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{acct.emoji}</span>
@@ -63,7 +63,7 @@ function SplitRow({ acct, amount }: { acct: typeof ACCOUNTS[0]; amount: number }
   );
 }
 
-function WindfallRow({ acct, amount }: { acct: typeof WINDFALL_ACCOUNTS[0]; amount: number }) {
+function WindfallRow({ acct, amount }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", borderBottom: "1px solid #1E1E1E", background: "#111" }}>
       <span style={{ fontSize: 20, width: 28, textAlign: "center" }}>{acct.emoji}</span>
@@ -76,7 +76,7 @@ function WindfallRow({ acct, amount }: { acct: typeof WINDFALL_ACCOUNTS[0]; amou
   );
 }
 
-function Stepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function Stepper({ value, onChange }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <button onClick={() => onChange(Math.max(0, value - 1))} style={{ width: 34, height: 34, background: "#1E1E1E", border: "1px solid #333", color: "#C9A84C", fontSize: 20, cursor: "pointer", borderRadius: 4 }}>−</button>
@@ -86,13 +86,7 @@ function Stepper({ value, onChange }: { value: number; onChange: (v: number) => 
   );
 }
 
-type RatePickerProps = {
-  rate: number; setRate: (v: number) => void;
-  useCustom: boolean; setUseCustom: (v: boolean) => void;
-  customRate: string; setCustomRate: (v: string) => void;
-};
-
-function RatePicker({ rate, setRate, useCustom, setUseCustom, customRate, setCustomRate }: RatePickerProps) {
+function RatePicker({ rate, setRate, useCustom, setUseCustom, customRate, setCustomRate }) {
   return (
     <div>
       <div style={{ display: "flex", gap: 5, marginBottom: useCustom ? 8 : 0 }}>
@@ -126,25 +120,30 @@ function RatePicker({ rate, setRate, useCustom, setUseCustom, customRate, setCus
 
 // ── SESSION INPUT — simple mode + mix mode toggle ────────────────────────────
 
-type MixItem = { id: number; value: number; sub: string };
+function SessionInput({ sessionTotal, onTotalChange }) {
+  // Simple mode state
+  const [sessions, setSessions]     = useState(5);
+  const [rate, setRate]             = useState(300);
+  const [useCustom, setUseCustom]   = useState(false);
+  const [customRate, setCustomRate] = useState("");
 
-function SessionInput({ onTotalChange }: { sessionTotal: number; onTotalChange: (v: number) => void }) {
-  const [sessions, setSessions]         = useState(5);
-  const [rate, setRate]                 = useState(300);
-  const [useCustom, setUseCustom]       = useState(false);
-  const [customRate, setCustomRate]     = useState("");
-  const [mixMode, setMixMode]           = useState(false);
-  const [mixList, setMixList]           = useState<MixItem[]>([]);
-  const [pickRate, setPickRate]         = useState(300);
-  const [pickCustom, setPickCustom]     = useState(false);
+  // Mix mode state
+  const [mixMode, setMixMode]       = useState(false);
+  const [mixList, setMixList]       = useState([]);
+  const [pickRate, setPickRate]     = useState(300);
+  const [pickCustom, setPickCustom] = useState(false);
   const [pickCustomVal, setPickCustomVal] = useState("");
 
-  const simpleEffective = useCustom ? (Number(customRate) || 0) : rate;
-  const simpleTotal     = sessions * simpleEffective;
-  const mixTotal        = mixList.reduce((s, x) => s + x.value, 0);
-  const currentTotal    = mixMode ? mixTotal : simpleTotal;
+  // Compute and bubble up total whenever deps change
+  const simpleEffective  = useCustom ? (Number(customRate) || 0) : rate;
+  const simpleTotal      = sessions * simpleEffective;
+  const mixTotal         = mixList.reduce((s, x) => s + x.value, 0);
+  const currentTotal     = mixMode ? mixTotal : simpleTotal;
 
-  onTotalChange(currentTotal);
+  // Keep parent in sync
+  useState(() => { onTotalChange(currentTotal); });
+  // We call onTotalChange inline during render via a derived value pattern
+  // instead, we'll just pass currentTotal back through the prop each render.
 
   const addToMix = () => {
     const val = pickCustom ? Number(pickCustomVal) : pickRate;
@@ -155,20 +154,28 @@ function SessionInput({ onTotalChange }: { sessionTotal: number; onTotalChange: 
     if (pickCustom) setPickCustomVal("");
   };
 
-  const removeFromMix = (id: number) => setMixList(l => l.filter(x => x.id !== id));
+  const removeFromMix = (id) => setMixList(l => l.filter(x => x.id !== id));
 
   const switchToMix = () => {
+    // Pre-fill mix list from simple mode so no data is lost
     if (mixList.length === 0 && sessions > 0) {
       const preset = RATE_PRESETS.find(r => r.value === rate);
       const sub    = useCustom ? `$${customRate} custom` : preset?.sub ?? "";
       const val    = useCustom ? Number(customRate) : rate;
-      const seeded = Array.from({ length: sessions }, () => ({ id: ++uid, value: val, sub }));
+      const seeded = Array.from({ length: sessions }, (_, i) => ({ id: ++uid, value: val, sub }));
       setMixList(seeded);
     }
     setMixMode(true);
   };
 
-  const switchToSimple = () => setMixMode(false);
+  const switchToSimple = () => {
+    setMixMode(false);
+  };
+
+  // Expose total to parent — return from render
+  // We do this via a side-effect-free pattern: just pass currentTotal as a prop
+  // The parent reads it via callback; call it here unconditionally
+  onTotalChange(currentTotal);
 
   return (
     <div>
@@ -201,6 +208,7 @@ function SessionInput({ onTotalChange }: { sessionTotal: number; onTotalChange: 
       {/* ── MIX MODE ── */}
       {mixMode && (
         <div style={{ background: "#161616", border: "1px solid #2A5A3A", borderRadius: 6, overflow: "hidden", marginBottom: 10 }}>
+          {/* Add a session */}
           <div style={{ padding: "12px 14px", borderBottom: "1px solid #1E1E1E" }}>
             <div style={{ fontSize: 10, color: "#5BC4A0", marginBottom: 6 }}>PICK RATE & ADD</div>
             <RatePicker rate={pickRate} setRate={setPickRate} useCustom={pickCustom} setUseCustom={setPickCustom} customRate={pickCustomVal} setCustomRate={setPickCustomVal} />
@@ -212,6 +220,7 @@ function SessionInput({ onTotalChange }: { sessionTotal: number; onTotalChange: 
             }}>+ ADD SESSION</button>
           </div>
 
+          {/* Session list */}
           {mixList.length === 0 ? (
             <div style={{ padding: "18px", textAlign: "center", fontSize: 11, color: "#333" }}>
               No sessions added yet
@@ -231,6 +240,7 @@ function SessionInput({ onTotalChange }: { sessionTotal: number; onTotalChange: 
                   <button onClick={() => removeFromMix(s.id)} style={{ width: 22, height: 22, background: "#1E1E1E", border: "1px solid #2A2A2A", color: "#555", fontSize: 14, cursor: "pointer", borderRadius: 3, padding: 0, lineHeight: 1 }}>×</button>
                 </div>
               ))}
+              {/* Subtotal */}
               <div style={{ padding: "10px 14px", background: "#111", borderTop: "1px solid #333", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 10, color: "#555" }}>{mixList.length} SESSION{mixList.length !== 1 ? "S" : ""} SUBTOTAL</div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#C9A84C" }}>{fmt(mixTotal)}</div>
@@ -245,12 +255,7 @@ function SessionInput({ onTotalChange }: { sessionTotal: number; onTotalChange: 
 
 // ── MEMBERSHIP BLOCK ─────────────────────────────────────────────────────────
 
-type MembershipBlockProps = {
-  memberships: number; setMemberships: (v: number) => void;
-  membershipPay: string; setMembershipPay: (v: string) => void;
-};
-
-function MembershipBlock({ memberships, setMemberships, membershipPay, setMembershipPay }: MembershipBlockProps) {
+function MembershipBlock({ memberships, setMemberships, membershipPay, setMembershipPay }) {
   return (
     <div style={{ background: "#161616", border: "1px solid #222", borderRadius: 6, padding: "12px 14px", marginBottom: 10 }}>
       <div style={{ fontSize: 10, color: "#C9A84C", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>MEMBERSHIPS</div>
@@ -281,7 +286,7 @@ function MembershipBlock({ memberships, setMemberships, membershipPay, setMember
 
 // ── INCOME TOTAL BOX ─────────────────────────────────────────────────────────
 
-function TotalBox({ sessionTotal, membershipIncome }: { sessionTotal: number; membershipIncome: number }) {
+function TotalBox({ sessionTotal, membershipIncome }) {
   const total = sessionTotal + membershipIncome;
   return (
     <div style={{ background: "#161616", border: "1px solid #C9A84C", borderRadius: 6, padding: "16px 20px", marginBottom: 20 }}>
@@ -303,15 +308,7 @@ function TotalBox({ sessionTotal, membershipIncome }: { sessionTotal: number; me
 
 // ── HELPER VIEW ──────────────────────────────────────────────────────────────
 
-type Submission = {
-  memberships: number;
-  membershipPay: string;
-  totalIncome: number;
-  note: string;
-  date: string;
-};
-
-function HelperView({ onSubmit, lastSubmission }: { onSubmit: (d: Submission) => void; lastSubmission: Submission | null }) {
+function HelperView({ onSubmit, lastSubmission }) {
   const [sessionTotal, setSessionTotal]   = useState(0);
   const [memberships, setMemberships]     = useState(0);
   const [membershipPay, setMembershipPay] = useState("weekly");
@@ -345,6 +342,7 @@ function HelperView({ onSubmit, lastSubmission }: { onSubmit: (d: Submission) =>
         )}
 
         <SessionInput sessionTotal={sessionTotal} onTotalChange={setSessionTotal} />
+
         <MembershipBlock memberships={memberships} setMemberships={setMemberships} membershipPay={membershipPay} setMembershipPay={setMembershipPay} />
 
         <input placeholder="Add a note (optional)..." value={note} onChange={e => setNote(e.target.value)}
@@ -368,22 +366,20 @@ function HelperView({ onSubmit, lastSubmission }: { onSubmit: (d: Submission) =>
 
 // ── ADMIN VIEW ───────────────────────────────────────────────────────────────
 
-type WeekRecord = { week: number; income: number; memberships: number; date: string };
-
-function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: Submission | null; onClearPending: () => void }) {
+function AdminView({ pendingSubmission, onClearPending }) {
   const [tab, setTab]                     = useState("studio");
   const [sessionTotal, setSessionTotal]   = useState(0);
   const [memberships, setMemberships]     = useState(0);
   const [membershipPay, setMembershipPay] = useState("monthly");
   const [windfall, setWindfall]           = useState(112000);
-  const [weekHistory, setWeekHistory]     = useState<WeekRecord[]>([]);
+  const [weekHistory, setWeekHistory]     = useState([]);
   const [weekNum, setWeekNum]             = useState(1);
   const [showBanner, setShowBanner]       = useState(true);
 
   const membershipIncome = memberships * 300;
   const studioIncome     = sessionTotal + membershipIncome;
 
-  const logWeek = (override?: number) => {
+  const logWeek = (override) => {
     const income = override ?? studioIncome;
     setWeekHistory(h => [{ week: weekNum, income, memberships, date: new Date().toLocaleDateString() }, ...h].slice(0, 24));
     setWeekNum(n => n + 1);
@@ -397,7 +393,7 @@ function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: S
     setShowBanner(false);
   };
 
-  const compoundRunning = weekHistory.reduce<Record<string, number>>((acc, w) => ({
+  const compoundRunning = weekHistory.reduce((acc, w) => ({
     son:       (acc.son       || 0) + w.income * 0.083,
     emergency: (acc.emergency || 0) + w.income * 0.10,
     travel:    (acc.travel    || 0) + w.income * 0.033,
@@ -406,6 +402,7 @@ function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: S
   return (
     <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: mono, color: "#DDD" }}>
 
+      {/* Pending banner */}
       {pendingSubmission && showBanner && (
         <div style={{ background: "#0D1F0D", borderBottom: "2px solid #5BC4A0", padding: "14px 20px" }}>
           <div style={{ fontSize: 10, color: "#5BC4A0", fontWeight: 700, letterSpacing: 2, marginBottom: 6 }}>📥 HELPER SUBMITTED A WEEK</div>
@@ -421,6 +418,7 @@ function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: S
         </div>
       )}
 
+      {/* Header */}
       <div style={{ background: "#111", borderBottom: "1px solid #1E1E1E", padding: "20px 20px 0" }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div>
@@ -445,6 +443,7 @@ function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: S
         </div>
       </div>
 
+      {/* ── STUDIO ── */}
       {tab === "studio" && (
         <div>
           <div style={{ padding: "20px 20px 0" }}>
@@ -477,6 +476,7 @@ function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: S
         </div>
       )}
 
+      {/* ── WINDFALL ── */}
       {tab === "windfall" && (
         <div>
           <div style={{ padding: "20px 20px 16px" }}>
@@ -520,11 +520,12 @@ function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: S
         </div>
       )}
 
+      {/* ── TRACKER ── */}
       {tab === "tracker" && (
         <div style={{ padding: 20 }}>
           <div style={{ fontSize: 10, color: "#C9A84C", letterSpacing: 2, marginBottom: 16, fontWeight: 700 }}>COMPOUNDING ACCOUNTS</div>
           {[
-            { label: "🧒 Son's Savings",  key: "son",       color: "#6BA3E8", target: 6000 },
+            { label: "🧒 Son's Savings", key: "son",       color: "#6BA3E8", target: 6000 },
             { label: "🚨 Emergency Fund", key: "emergency", color: "#E87070", target: 7200 },
             { label: "✈️ Travel Fund",    key: "travel",    color: "#B57BEB", target: 2400 },
           ].map(a => {
@@ -577,8 +578,8 @@ function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: S
 
 // ── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [mode, setMode]                 = useState<"admin" | "helper" | null>(null);
-  const [pendingSubmission, setPending] = useState<Submission | null>(null);
+  const [mode, setMode]                 = useState(null);
+  const [pendingSubmission, setPending] = useState(null);
 
   if (mode === null) {
     return (

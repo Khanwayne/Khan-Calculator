@@ -370,7 +370,7 @@ function HelperView({ onSubmit, lastSubmission }: { onSubmit: (d: Submission) =>
 
 type WeekRecord = { week: number; income: number; memberships: number; date: string };
 
-function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: Submission | null; onClearPending: () => void }) {
+function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pendingSubmission: Submission | null; onClearPending: () => void; onChangePin: () => void }) {
   const [tab, setTab]                     = useState("studio");
   const [sessionTotal, setSessionTotal]   = useState(0);
   const [memberships, setMemberships]     = useState(0);
@@ -567,17 +567,159 @@ function AdminView({ pendingSubmission, onClearPending }: { pendingSubmission: S
         </div>
       )}
 
-      <div style={{ padding: "16px 20px", borderTop: "1px solid #1E1E1E", display: "flex", justifyContent: "space-between" }}>
+      <div style={{ padding: "16px 20px", borderTop: "1px solid #1E1E1E", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ fontSize: 9, color: "#333", letterSpacing: 1 }}>KHAN MONEY OS · ADMIN</div>
-        <div style={{ fontSize: 9, color: "#333" }}>Every dollar has a job.</div>
+        <button onClick={onChangePin} style={{ background: "none", border: "none", fontFamily: mono, fontSize: 9, color: "#333", cursor: "pointer", letterSpacing: 1, padding: 0 }}>🔑 CHANGE PIN</button>
       </div>
     </div>
   );
 }
 
+// ── PIN SCREEN ────────────────────────────────────────────────────────────────
+
+const PIN_KEY = "khan_admin_pin";
+const getStoredPin = () => localStorage.getItem(PIN_KEY) ?? "1234";
+const setStoredPin = (p: string) => localStorage.setItem(PIN_KEY, p);
+
+type PinScreenProps = {
+  title: string;
+  subtitle: string;
+  onSuccess: (pin: string) => void;
+  onBack: () => void;
+  validatePin?: (pin: string) => boolean;
+  accentColor?: string;
+  errorMsg?: string;
+};
+
+function PinScreen({ title, subtitle, onSuccess, onBack, validatePin, accentColor = "#C9A84C", errorMsg }: PinScreenProps) {
+  const [digits, setDigits] = useState<string[]>([]);
+  const [shake, setShake]   = useState(false);
+  const [err, setErr]       = useState("");
+
+  const add = (d: string) => {
+    if (digits.length >= 4) return;
+    const next = [...digits, d];
+    setDigits(next);
+    if (next.length === 4) {
+      const pin = next.join("");
+      const valid = validatePin ? validatePin(pin) : pin === getStoredPin();
+      if (valid) {
+        setTimeout(() => onSuccess(pin), 120);
+      } else {
+        setShake(true);
+        setErr(errorMsg ?? "Wrong PIN");
+        setTimeout(() => { setShake(false); setDigits([]); setErr(""); }, 700);
+      }
+    }
+  };
+
+  const del = () => setDigits(d => d.slice(0, -1));
+
+  const keys = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: mono, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 30 }}>
+      <button onClick={onBack} style={{ position: "fixed", top: 12, left: 16, background: "none", border: "none", color: "#555", fontFamily: mono, fontSize: 10, cursor: "pointer", letterSpacing: 1 }}>← BACK</button>
+
+      <div style={{ fontSize: 10, color: accentColor, letterSpacing: 3, fontWeight: 700, marginBottom: 6 }}>KHAN MONEY OS</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: "#FFF", marginBottom: 4 }}>{title}</div>
+      <div style={{ fontSize: 10, color: "#444", marginBottom: 40 }}>{subtitle}</div>
+
+      {/* Dots */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 8 }}>
+        {[0,1,2,3].map(i => (
+          <div key={i} style={{
+            width: 14, height: 14, borderRadius: "50%",
+            background: i < digits.length ? accentColor : "#222",
+            border: `2px solid ${i < digits.length ? accentColor : "#333"}`,
+            transition: "background 0.1s",
+            transform: shake ? "translateX(0)" : "none",
+          }} />
+        ))}
+      </div>
+
+      {err && <div style={{ fontSize: 10, color: "#E87070", marginBottom: 16, letterSpacing: 1 }}>{err}</div>}
+      {!err && <div style={{ height: 26 }} />}
+
+      {/* Numpad */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 72px)", gap: 10 }}>
+        {keys.map((k, i) => (
+          k === "" ? <div key={i} /> :
+          k === "⌫" ? (
+            <button key={i} onClick={del} style={{ height: 64, background: "#161616", border: "1px solid #2A2A2A", borderRadius: 8, color: "#666", fontFamily: mono, fontSize: 18, cursor: "pointer" }}>{k}</button>
+          ) : (
+            <button key={i} onClick={() => add(k)} style={{ height: 64, background: "#161616", border: `1px solid #2A2A2A`, borderRadius: 8, color: "#DDD", fontFamily: mono, fontSize: 22, fontWeight: 700, cursor: "pointer", transition: "background 0.1s" }}
+              onMouseDown={e => (e.currentTarget.style.background = "#222")}
+              onMouseUp={e => (e.currentTarget.style.background = "#161616")}
+            >{k}</button>
+          )
+        ))}
+      </div>
+
+      <div style={{ fontSize: 9, color: "#222", marginTop: 40, letterSpacing: 1 }}>Every dollar has a job.</div>
+    </div>
+  );
+}
+
+// ── CHANGE PIN FLOW ───────────────────────────────────────────────────────────
+
+function ChangePinFlow({ onDone }: { onDone: () => void }) {
+  const [step, setStep] = useState<"verify" | "new" | "confirm">("verify");
+  const [newPin, setNewPin]   = useState("");
+  const [success, setSuccess] = useState(false);
+
+  if (success) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: mono, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>✓</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#5BC4A0" }}>PIN updated</div>
+        <button onClick={onDone} style={{ marginTop: 30, background: "none", border: "none", color: "#555", fontFamily: mono, fontSize: 10, cursor: "pointer", letterSpacing: 1 }}>← BACK TO ADMIN</button>
+      </div>
+    );
+  }
+
+  if (step === "verify") {
+    return (
+      <PinScreen
+        title="Verify Identity"
+        subtitle="Enter your current PIN"
+        onSuccess={() => setStep("new")}
+        onBack={onDone}
+        accentColor="#C9A84C"
+        errorMsg="Current PIN incorrect"
+      />
+    );
+  }
+
+  if (step === "new") {
+    return (
+      <PinScreen
+        title="New PIN"
+        subtitle="Choose a 4-digit PIN"
+        onSuccess={(p) => { setNewPin(p); setStep("confirm"); }}
+        onBack={() => setStep("verify")}
+        validatePin={() => true}
+        accentColor="#5BC4A0"
+      />
+    );
+  }
+
+  return (
+    <PinScreen
+      title="Confirm PIN"
+      subtitle="Re-enter your new PIN"
+      onSuccess={() => { setStoredPin(newPin); setSuccess(true); }}
+      onBack={() => setStep("new")}
+      validatePin={(p) => p === newPin}
+      accentColor="#5BC4A0"
+      errorMsg="PINs don't match"
+    />
+  );
+}
+
 // ── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [mode, setMode]                 = useState<"admin" | "helper" | null>(null);
+  const [mode, setMode]                 = useState<"admin" | "helper" | "pin" | "changePin" | null>(null);
   const [pendingSubmission, setPending] = useState<Submission | null>(null);
 
   if (mode === null) {
@@ -587,7 +729,7 @@ export default function App() {
         <div style={{ fontSize: 26, fontWeight: 700, color: "#FFF", marginBottom: 4 }}>Money OS</div>
         <div style={{ fontSize: 11, color: "#444", marginBottom: 50 }}>Studio · Tax Deeds · Personal</div>
         <div style={{ width: "100%", maxWidth: 340 }}>
-          <button onClick={() => setMode("admin")} style={{ width: "100%", padding: 20, marginBottom: 12, border: "2px solid #C9A84C", background: "#161616", borderRadius: 8, cursor: "pointer", fontFamily: mono, textAlign: "left" }}>
+          <button onClick={() => setMode("pin")} style={{ width: "100%", padding: 20, marginBottom: 12, border: "2px solid #C9A84C", background: "#161616", borderRadius: 8, cursor: "pointer", fontFamily: mono, textAlign: "left" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#C9A84C", marginBottom: 4 }}>👑  ADMIN VIEW</div>
             <div style={{ fontSize: 10, color: "#555" }}>Full splits, tracker, all accounts. This is your view.</div>
           </button>
@@ -601,11 +743,26 @@ export default function App() {
     );
   }
 
+  if (mode === "pin") {
+    return (
+      <PinScreen
+        title="Admin Access"
+        subtitle="Enter your PIN to continue"
+        onSuccess={() => setMode("admin")}
+        onBack={() => setMode(null)}
+      />
+    );
+  }
+
+  if (mode === "changePin") {
+    return <ChangePinFlow onDone={() => setMode("admin")} />;
+  }
+
   if (mode === "helper") {
     return (
       <div>
         <button onClick={() => setMode(null)} style={{ position: "fixed", top: 12, right: 12, background: "#161616", border: "1px solid #333", color: "#555", padding: "6px 12px", borderRadius: 4, cursor: "pointer", fontFamily: mono, fontSize: 10, zIndex: 100 }}>← BACK</button>
-        <HelperView onSubmit={(data) => { setPending(data); setMode("admin"); }} lastSubmission={pendingSubmission} />
+        <HelperView onSubmit={(data) => { setPending(data); setMode("pin"); }} lastSubmission={pendingSubmission} />
       </div>
     );
   }
@@ -613,7 +770,7 @@ export default function App() {
   return (
     <div>
       <button onClick={() => setMode(null)} style={{ position: "fixed", top: 12, right: 12, background: "#161616", border: "1px solid #333", color: "#555", padding: "6px 12px", borderRadius: 4, cursor: "pointer", fontFamily: mono, fontSize: 10, zIndex: 100 }}>⇄ SWITCH</button>
-      <AdminView pendingSubmission={pendingSubmission} onClearPending={() => setPending(null)} />
+      <AdminView pendingSubmission={pendingSubmission} onClearPending={() => setPending(null)} onChangePin={() => setMode("changePin")} />
     </div>
   );
 }

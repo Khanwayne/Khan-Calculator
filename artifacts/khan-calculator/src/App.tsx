@@ -591,12 +591,17 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
             </div>
           </div>
 
-          {/* ── SPLITS + LOG (only once at least one day is in) ── */}
-          {weekRunningTotal > 0 && (
+          {/* ── SPLITS (always visible, real-time) ── */}
+          {(() => { const liveTotal = weekRunningTotal + stagingTotal; return (
             <>
               <div style={{ borderTop: "1px solid #1E1E1E" }}>
-                <div style={{ padding: "14px 20px 8px", fontSize: 10, color: "#C9A84C", letterSpacing: 2, fontWeight: 700 }}>YOUR SPLIT SO FAR</div>
-                {ACCOUNTS.map(a => <SplitRow key={a.key} acct={a} amount={studioIncome} />)}
+                <div style={{ padding: "14px 20px 4px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ fontSize: 10, color: "#C9A84C", letterSpacing: 2, fontWeight: 700 }}>YOUR SPLIT</div>
+                  {stagingTotal > 0 && weekRunningTotal > 0 && (
+                    <div style={{ fontSize: 9, color: "#444", letterSpacing: 1 }}>week {fmt(weekRunningTotal)} + today {fmt(stagingTotal)}</div>
+                  )}
+                </div>
+                {ACCOUNTS.map(a => <SplitRow key={a.key} acct={a} amount={liveTotal} />)}
               </div>
               <div style={{ padding: 20 }}>
                 <div style={{ background: "#0D1F0D", border: "1px solid #2A5A2A", borderLeft: "4px solid #5BC4A0", borderRadius: 6, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -604,16 +609,18 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
                     <div style={{ fontSize: 11, fontWeight: 700, color: "#5BC4A0" }}>🎉 THIS WEEKEND</div>
                     <div style={{ fontSize: 10, color: "#3A7A5A", marginTop: 2 }}>Your family memory budget</div>
                   </div>
-                  <div style={{ fontSize: 32, fontWeight: 700, color: "#5BC4A0" }}>{fmt(studioIncome * 0.083)}</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, color: "#5BC4A0" }}>{fmt(liveTotal * 0.083)}</div>
                 </div>
-                <button onClick={() => logWeek()} style={{
-                  width: "100%", padding: "14px 0", border: "none", background: "#C9A84C",
-                  color: "#0A0A0A", fontFamily: mono, fontWeight: 700, fontSize: 13,
-                  letterSpacing: 1, cursor: "pointer", borderRadius: 6,
+                <button onClick={() => logWeek()} disabled={weekRunningTotal === 0} style={{
+                  width: "100%", padding: "14px 0", border: "none", borderRadius: 6,
+                  fontFamily: mono, fontWeight: 700, fontSize: 13, letterSpacing: 1,
+                  background: weekRunningTotal === 0 ? "#1A1A1A" : "#C9A84C",
+                  color: weekRunningTotal === 0 ? "#333" : "#0A0A0A",
+                  cursor: weekRunningTotal === 0 ? "not-allowed" : "pointer",
                 }}>LOG THIS WEEK →</button>
               </div>
             </>
-          )}
+          ); })()}
         </div>
       )}
 

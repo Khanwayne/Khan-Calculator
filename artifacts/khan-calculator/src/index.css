@@ -280,6 +280,16 @@
   }
 }
 
+html, body {
+  background-color: #0A0A0A;
+}
+
+#root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  background-color: #0A0A0A;
+}
+
 /**
  * Using the elevate system.
  * Automatic contrast adjustment.

@@ -129,7 +129,7 @@ function RatePicker({ rate, setRate, useCustom, setUseCustom, customRate, setCus
 type MixItem = { id: number; value: number; sub: string };
 
 function SessionInput({ onTotalChange }: { sessionTotal: number; onTotalChange: (v: number) => void }) {
-  const [sessions, setSessions]         = useState(5);
+  const [sessions, setSessions]         = useState(0);
   const [rate, setRate]                 = useState(300);
   const [useCustom, setUseCustom]       = useState(false);
   const [customRate, setCustomRate]     = useState("");

@@ -754,6 +754,55 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
             );
           })()}
 
+          {/* ── THIS WEEK vs LAST WEEK ── */}
+          {weekHistory.length >= 1 && (() => {
+            const lastWeek  = weekHistory[0];
+            const thisWeek  = weekRunningTotal;
+            const diff      = thisWeek - lastWeek.income;
+            const pct       = lastWeek.income > 0 ? Math.round((diff / lastWeek.income) * 100) : 0;
+            const ahead     = diff >= 0;
+            const diffColor = ahead ? "#5BC4A0" : "#E87070";
+            const arrow     = ahead ? "↑" : "↓";
+            return (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 10, color: "#C9A84C", letterSpacing: 2, marginBottom: 12, fontWeight: 700 }}>THIS WEEK vs LAST WEEK</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
+                  <div style={{ background: "#111", border: "1px solid #2A2A1A", borderLeft: "3px solid #C9A84C", borderRadius: 6, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 9, color: "#C9A84C", letterSpacing: 1, marginBottom: 6, fontWeight: 700 }}>THIS WEEK</div>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: "#FFF" }}>{fmt(thisWeek)}</div>
+                    <div style={{ fontSize: 9, color: "#444", marginTop: 3 }}>
+                      {weekRunningTotal === 0 ? "not started yet" : `${dayEntries.length} day${dayEntries.length !== 1 ? "s" : ""} in`}
+                    </div>
+                  </div>
+                  <div style={{ background: "#161616", border: "1px solid #1E1E1E", borderRadius: 6, padding: "14px 16px" }}>
+                    <div style={{ fontSize: 9, color: "#555", letterSpacing: 1, marginBottom: 6 }}>LAST WEEK #{lastWeek.week}</div>
+                    <div style={{ fontSize: 24, fontWeight: 700, color: "#888" }}>{fmt(lastWeek.income)}</div>
+                    <div style={{ fontSize: 9, color: "#444", marginTop: 3 }}>{lastWeek.date}</div>
+                  </div>
+                </div>
+                {thisWeek > 0 && (
+                  <div style={{
+                    background: ahead ? "#0D1F0D" : "#1F0D0D",
+                    border: `1px solid ${ahead ? "#2A5A2A" : "#5A2A2A"}`,
+                    borderLeft: `4px solid ${diffColor}`,
+                    borderRadius: 6, padding: "12px 16px",
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: diffColor }}>
+                        {arrow} {ahead ? "Ahead" : "Behind"} of last week
+                      </div>
+                      <div style={{ fontSize: 9, color: ahead ? "#3A7A5A" : "#7A3A3A", marginTop: 2 }}>
+                        {pct > 0 ? "+" : ""}{pct}% week over week
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 28, fontWeight: 700, color: diffColor }}>{fmt(Math.abs(diff))}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           <div style={{ fontSize: 10, color: "#C9A84C", letterSpacing: 2, marginBottom: 16, fontWeight: 700 }}>COMPOUNDING ACCOUNTS</div>
           {[
             { label: "🧒 Son's Savings",  key: "son",       color: "#6BA3E8", target: 6000 },

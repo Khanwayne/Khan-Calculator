@@ -959,13 +959,53 @@ function ChangePinFlow({ onDone }: { onDone: () => void }) {
   );
 }
 
+// ── SPLASH SCREEN ─────────────────────────────────────────────────────────────
+
+function SplashScreen({ onDone }: { onDone: () => void }) {
+  const [fading, setFading] = useState(false);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setFading(true), 1400);
+    const t2 = setTimeout(() => onDone(), 1900);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [onDone]);
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 9999,
+      background: "#0A0A0A", fontFamily: mono,
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      transition: "opacity 0.5s ease",
+      opacity: fading ? 0 : 1,
+      pointerEvents: "none",
+    }}>
+      <div style={{ fontSize: 13, color: "#C9A84C", letterSpacing: 6, fontWeight: 700, marginBottom: 10 }}>KHAN</div>
+      <div style={{ fontSize: 36, fontWeight: 700, color: "#FFF", letterSpacing: -1 }}>Money OS</div>
+      <div style={{ fontSize: 11, color: "#444", marginTop: 8, letterSpacing: 1 }}>Studio · Tax Deeds · Personal</div>
+
+      <div style={{ marginTop: 64, width: 120, height: 2, background: "#1A1A1A", borderRadius: 1, overflow: "hidden" }}>
+        <div style={{
+          height: "100%", background: "#C9A84C", borderRadius: 1,
+          animation: "splash-bar 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards",
+        }} />
+      </div>
+
+      <div style={{ marginTop: 16, fontSize: 9, color: "#2A2A2A", letterSpacing: 2, animation: "splash-pulse 1.4s ease infinite" }}>
+        LOADING
+      </div>
+    </div>
+  );
+}
+
 // ── ROOT ─────────────────────────────────────────────────────────────────────
 export default function App() {
+  const [splash, setSplash]             = useState(true);
   const [mode, setMode]                 = useState<"admin" | "helper" | "pin" | "changePin" | null>(null);
   const [pendingSubmission, setPending] = useState<Submission | null>(null);
 
-  if (mode === null) {
-    return (
+  const content = (() => {
+    if (mode === null) return (
       <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: mono, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 30 }}>
         <div style={{ fontSize: 11, color: "#C9A84C", letterSpacing: 4, fontWeight: 700, marginBottom: 6 }}>KHAN</div>
         <div style={{ fontSize: 26, fontWeight: 700, color: "#FFF", marginBottom: 4 }}>Money OS</div>
@@ -983,10 +1023,8 @@ export default function App() {
         <div style={{ fontSize: 9, color: "#222", marginTop: 40, letterSpacing: 1 }}>Every dollar has a job.</div>
       </div>
     );
-  }
 
-  if (mode === "pin") {
-    return (
+    if (mode === "pin") return (
       <PinScreen
         title="Admin Access"
         subtitle="Enter your PIN to continue"
@@ -994,25 +1032,28 @@ export default function App() {
         onBack={() => setMode(null)}
       />
     );
-  }
 
-  if (mode === "changePin") {
-    return <ChangePinFlow onDone={() => setMode("admin")} />;
-  }
+    if (mode === "changePin") return <ChangePinFlow onDone={() => setMode("admin")} />;
 
-  if (mode === "helper") {
-    return (
+    if (mode === "helper") return (
       <div>
         <button onClick={() => setMode(null)} style={{ position: "fixed", top: 12, right: 12, background: "#161616", border: "1px solid #333", color: "#555", padding: "6px 12px", borderRadius: 4, cursor: "pointer", fontFamily: mono, fontSize: 10, zIndex: 100 }}>← BACK</button>
         <HelperView onSubmit={(data) => { setPending(data); setMode("pin"); }} lastSubmission={pendingSubmission} />
       </div>
     );
-  }
+
+    return (
+      <div>
+        <button onClick={() => setMode(null)} style={{ position: "fixed", top: 12, right: 12, background: "#161616", border: "1px solid #333", color: "#555", padding: "6px 12px", borderRadius: 4, cursor: "pointer", fontFamily: mono, fontSize: 10, zIndex: 100 }}>⇄ SWITCH</button>
+        <AdminView pendingSubmission={pendingSubmission} onClearPending={() => setPending(null)} onChangePin={() => setMode("changePin")} />
+      </div>
+    );
+  })();
 
   return (
-    <div>
-      <button onClick={() => setMode(null)} style={{ position: "fixed", top: 12, right: 12, background: "#161616", border: "1px solid #333", color: "#555", padding: "6px 12px", borderRadius: 4, cursor: "pointer", fontFamily: mono, fontSize: 10, zIndex: 100 }}>⇄ SWITCH</button>
-      <AdminView pendingSubmission={pendingSubmission} onClearPending={() => setPending(null)} onChangePin={() => setMode("changePin")} />
-    </div>
+    <>
+      {splash && <SplashScreen onDone={() => setSplash(false)} />}
+      {content}
+    </>
   );
 }

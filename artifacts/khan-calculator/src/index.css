@@ -290,6 +290,16 @@ body {
   overflow-x: hidden;
 }
 
+/* Splash screen animations */
+@keyframes splash-bar {
+  from { width: 0%; }
+  to   { width: 100%; }
+}
+@keyframes splash-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
 /* Hide scrollbars everywhere */
 * {
   scrollbar-width: none;

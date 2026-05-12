@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd artifacts/khan-calculator && npm install && npm run build",
+  "outputDirectory": "artifacts/khan-calculator/dist",
+  "framework": null
+}

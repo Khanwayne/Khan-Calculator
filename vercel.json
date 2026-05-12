@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm install && pnpm -r --if-present run build",
+  "buildCommand": "pnpm install && pnpm --filter @workspace/khan-calculator run build",
   "outputDirectory": "artifacts/khan-calculator/dist",
   "framework": null
 }

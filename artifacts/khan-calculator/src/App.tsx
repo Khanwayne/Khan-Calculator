@@ -350,7 +350,7 @@ function HelperView({ onSubmit, lastSubmission }: { onSubmit: (d: Submission) =>
 
   return (
     <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: mono, color: "#DDD" }}>
-      <div style={{ background: "#111", borderBottom: "2px solid #5BC4A0", padding: "20px 20px 16px" }}>
+      <div style={{ background: "#111", borderBottom: "2px solid #5BC4A0", paddingTop: "calc(env(safe-area-inset-top) + 20px)", paddingBottom: 16, paddingLeft: 20, paddingRight: 20 }}>
         <div style={{ fontSize: 10, color: "#5BC4A0", letterSpacing: 3, fontWeight: 700, marginBottom: 4 }}>KHAN MONEY OS</div>
         <div style={{ fontSize: 20, fontWeight: 700, color: "#FFF" }}>Helper View</div>
         <div style={{ fontSize: 10, color: "#444", marginTop: 2 }}>Enter this week's numbers — splits handled automatically</div>
@@ -464,7 +464,7 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
     <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: mono, color: "#DDD" }}>
 
       {pendingSubmission && showBanner && (
-        <div style={{ background: "#0D1F0D", borderBottom: "2px solid #5BC4A0", padding: "14px 20px" }}>
+        <div style={{ background: "#0D1F0D", borderBottom: "2px solid #5BC4A0", paddingTop: "calc(env(safe-area-inset-top) + 14px)", paddingBottom: 14, paddingLeft: 20, paddingRight: 20 }}>
           <div style={{ fontSize: 10, color: "#5BC4A0", fontWeight: 700, letterSpacing: 2, marginBottom: 6 }}>📥 HELPER SUBMITTED A WEEK</div>
           <div style={{ fontSize: 14, color: "#C9A84C", fontWeight: 700, marginBottom: 4 }}>{fmt(pendingSubmission.totalIncome)}</div>
           <div style={{ fontSize: 11, color: "#555", marginBottom: 10 }}>
@@ -478,7 +478,7 @@ function AdminView({ pendingSubmission, onClearPending, onChangePin }: { pending
         </div>
       )}
 
-      <div style={{ background: "#111", borderBottom: "1px solid #1E1E1E", padding: "20px 20px 0" }}>
+      <div style={{ background: "#111", borderBottom: "1px solid #1E1E1E", paddingTop: "calc(env(safe-area-inset-top) + 20px)", paddingLeft: 20, paddingRight: 20, paddingBottom: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: 11, color: "#C9A84C", letterSpacing: 3, fontWeight: 700, marginBottom: 4 }}>KHAN</div>
@@ -861,7 +861,7 @@ function PinScreen({ title, subtitle, onSuccess, onBack, validatePin, accentColo
 
   return (
     <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: mono, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 30 }}>
-      <button onClick={onBack} style={{ position: "fixed", top: 12, left: 16, background: "none", border: "none", color: "#555", fontFamily: mono, fontSize: 10, cursor: "pointer", letterSpacing: 1 }}>← BACK</button>
+      <button onClick={onBack} style={{ position: "fixed", top: "calc(env(safe-area-inset-top) + 12px)", left: 16, background: "none", border: "none", color: "#555", fontFamily: mono, fontSize: 10, cursor: "pointer", letterSpacing: 1 }}>← BACK</button>
 
       <div style={{ fontSize: 10, color: accentColor, letterSpacing: 3, fontWeight: 700, marginBottom: 6 }}>KHAN MONEY OS</div>
       <div style={{ fontSize: 20, fontWeight: 700, color: "#FFF", marginBottom: 4 }}>{title}</div>
@@ -966,7 +966,7 @@ export default function App() {
 
   if (mode === null) {
     return (
-      <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: mono, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 30 }}>
+      <div style={{ minHeight: "100vh", background: "#0A0A0A", fontFamily: mono, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 30, paddingTop: "calc(env(safe-area-inset-top) + 30px)" }}>
         <div style={{ fontSize: 11, color: "#C9A84C", letterSpacing: 4, fontWeight: 700, marginBottom: 6 }}>KHAN</div>
         <div style={{ fontSize: 26, fontWeight: 700, color: "#FFF", marginBottom: 4 }}>Money OS</div>
         <div style={{ fontSize: 11, color: "#444", marginBottom: 50 }}>Studio · Tax Deeds · Personal</div>

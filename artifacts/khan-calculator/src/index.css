@@ -282,11 +282,19 @@
 
 html, body {
   background-color: #0A0A0A;
+  overflow-x: hidden;
+}
+
+/* Hide scrollbar on all elements */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
 }
 
 #root {
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
   background-color: #0A0A0A;
 }
 

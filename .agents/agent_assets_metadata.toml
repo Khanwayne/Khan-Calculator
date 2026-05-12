@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "RJIlARvUK0ibIXsCvHBd7"
+uri = "file://artifacts/khan-calculator/public/apple-touch-icon.png"
+type = "image"
+title = "khan-money-os-app-icon"

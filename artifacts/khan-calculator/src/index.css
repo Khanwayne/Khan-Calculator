@@ -280,12 +280,17 @@
   }
 }
 
-html, body {
+html {
+  background-color: #111;
+  padding-top: env(safe-area-inset-top);
+}
+
+body {
   background-color: #0A0A0A;
   overflow-x: hidden;
 }
 
-/* Hide scrollbar on all elements */
+/* Hide scrollbars everywhere */
 * {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -296,6 +301,7 @@ html, body {
 
 #root {
   background-color: #0A0A0A;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /**
